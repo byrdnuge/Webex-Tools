@@ -1,4 +1,6 @@
-import os
+## This doesn't work right now
+#
+# import os
 import csv
 import time
 import logging
