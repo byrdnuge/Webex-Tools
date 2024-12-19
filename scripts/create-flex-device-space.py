@@ -125,8 +125,8 @@ def process_csv(input_csv, output_csv):
 # Main execution
 if __name__ == "__main__":
     # Define input and output CSV file paths
-    input_csv = "deviceinput.csv"  # Example input CSV
-    output_csv = "output.csv"  # Output file to store results
+    input_csv = "../input/deviceinput2.csv"  # Example input CSV
+    output_csv = "../output/outputtest.csv"  # Output file to store results
 
     # Execute processing
     process_csv(input_csv, output_csv)
