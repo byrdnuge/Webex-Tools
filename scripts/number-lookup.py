@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Webex Staging Token from the .env file
-ACCESS_TOKEN = os.getenv("WEBEX_STAGING_TOKEN")
+ACCESS_TOKEN = os.getenv("WEBEX_ACCESS_TOKEN")
 
 
 # Function to retrieve all organizations with IDs and names

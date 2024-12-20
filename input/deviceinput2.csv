@@ -1,0 +1,2 @@
+displayName,orgId,LocationID,type,calling,calendar,hotdeskingStatus,deviceHostedMeetings
+ConfRoomTest,Y2lzY29zcGFyazovL3VzL09SR0FOSVpBVElPTi85ZmI2NjhlMS1kNmUxLTQ0MWYtYTZmOC1iOTY4MjI3Y2EzZDg,Y2lzY29zcGFyazovL3VybjpURUFNOnVzLWVhc3QtMl9hL1dPUktTUEFDRV9MT0NBVElPTi85ZmI2NjhlMS1kNmUxLTQ0MWYtYTZmOC1iOTY4MjI3Y2EzZDgjN2ZlMDg5YzEtNzdhYS00OTUxLThjZjEtYTliMzQ4OWUxYzY4,meetingRoom,"{""type"": ""none""}","{ ""type"": ""microsoft"",""emailAddress"": ""confroomtest2@cspire.com"" }",off,"{ ""enabled"": true,""siteUrl"": ""cspirebiz.webex.com""}"
