@@ -1,15 +1,14 @@
-
-# Lookup number across all orgs you have access too
-
 import os
 import requests
+# import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
+
 
 # Load environment variables
 load_dotenv()
 
-# Webex Access Token from the .env file
+# Webex Staging Token from the .env file
 ACCESS_TOKEN = os.getenv("WEBEX_STAGING_TOKEN")
 
 
@@ -71,7 +70,8 @@ def search_number_across_orgs(phone_number):
 
     all_results = []
 
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor() as executor:  # Uses default number of threads
+       # print(f"Active threads count before starting: {threading.active_count()}")
         # Submit calls for all organizations
         future_to_org = {
             executor.submit(get_numbers_in_org, phone_number, org): org
@@ -80,6 +80,9 @@ def search_number_across_orgs(phone_number):
 
         # Process results as API calls complete
         for future in as_completed(future_to_org):
+            # COMMENTED OUT: Dynamic thread debug monitoring for cleaner output
+            # Uncomment the next line to enable thread monitoring during debugging
+            # print(f"\r[Thread Monitor] Active threads: {threading.active_count()}", end='')
             try:
                 org_results = future.result()
 
@@ -89,6 +92,7 @@ def search_number_across_orgs(phone_number):
             except Exception as e:
                 print(f"Error occurred: {e}")
 
+   # print(f"\nActive threads count after execution: {threading.active_count()}")
     return all_results
 
 
