@@ -6,3 +6,13 @@ people_list.csv
 ./output
 ./input
 ./logs
+/input/device_activation.csv
+/input/deviceinput.csv
+/input/deviceinput2.csv
+/input/deviceinputmeet.csv
+/output/output.csv
+/output/outputtest.csv
+/input/people_listtest.csv
+/output/results.csv
+/input/workspaces.csv
+/logs/wxcadm_tests.log
