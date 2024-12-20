@@ -5,3 +5,4 @@ people_list.csv
 .idea/
 ./output
 ./input
+./logs
