@@ -3,3 +3,5 @@ device_activation.log
 people_list.csv
 .env
 .idea/
+./output
+./input
