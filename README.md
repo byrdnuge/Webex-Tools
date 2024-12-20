@@ -135,7 +135,7 @@ git --version
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/WebexTools.git
+   git clone https://github.com/byrdnuge/WebexTools.git
    cd WebexTools
    ```
 
