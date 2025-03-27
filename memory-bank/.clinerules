@@ -13,11 +13,15 @@ This file captures important patterns, preferences, and project intelligence for
 
 ### Naming Conventions
 - Module names use snake_case
+- Python filenames use snake_case (e.g., `activate_room_device.py`)
 - Command group names use kebab-case in CLI but snake_case in code
+- CLI commands and arguments use kebab-case (e.g., `devices activate-batch`, `--display-name`)
 - Function names use snake_case
 - Pydantic models use PascalCase
 - Constants are typically UPPER_SNAKE_CASE
 - Variables use snake_case
+
+This standardization provides a clear distinction between code contexts (snake_case) and user-facing CLI contexts (kebab-case).
 
 ### Documentation Style
 - Docstrings for functions and modules (Google style)
