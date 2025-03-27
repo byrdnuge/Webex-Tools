@@ -1,0 +1,32 @@
+[project]
+name = "webex-tools"
+version = "0.1.0"
+description = "CLI tool for managing Cisco Webex devices and resources"
+authors = [
+    {name = "John Bergoon",email = "jbergoon@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "rich-click>=1.6.1",
+    "pydantic>=2.0.0",
+    "requests>=2.28.0",
+    "python-dotenv>=1.0.0",
+    "rich>=13.0.0",
+]
+
+[project.scripts]
+webex = "webex_tools.cli:main"
+
+[tool.poetry]
+packages = [{include = "webex_tools", from = "src"}]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.0.0"
+black = "^23.0.0"
+isort = "^5.12.0"
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
