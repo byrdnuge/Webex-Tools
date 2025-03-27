@@ -1,0 +1,80 @@
+# WebexTools Project Intelligence
+
+This file captures important patterns, preferences, and project intelligence for the WebexTools project. It serves as a learning journal to help work more effectively with the codebase and project requirements.
+
+## Code Patterns
+
+### Script Structure
+- Scripts typically follow a main function pattern with argument parsing at the top
+- Error handling is done through try/except blocks
+- API interactions are abstracted through utility functions when possible
+- CSV operations use the standard Python csv module
+
+### Naming Conventions
+- Script filenames use kebab-case (e.g., `activate-room-device.py`) or snake_case (e.g., `activate_devices_from_csv.py`)
+- Function names use snake_case
+- Constants are typically UPPER_SNAKE_CASE
+- Variables use snake_case
+
+### Documentation Style
+- Docstrings for functions and modules
+- Inline comments for complex logic
+- README.md for project-level documentation
+- Memory bank for comprehensive project context
+
+## API Interaction Patterns
+
+### Authentication
+- API tokens are stored in environment variables
+- The .env.example file shows required environment variables
+- Tokens need to be manually renewed when they expire
+
+### Error Handling
+- HTTP errors are caught and reported with context
+- Input validation is performed before API calls when possible
+- Batch operations continue on individual item failures when possible
+
+## User Preferences
+
+### Documentation
+- Comprehensive documentation is valued
+- Memory bank structure for maintaining project context
+- Clear examples and usage instructions
+
+### Development Workflow
+- Script-based approach for simplicity
+- Focus on reusable components
+- Prioritize reliability and error handling
+
+## Known Challenges
+
+### API Limitations
+- Rate limiting requires careful handling for batch operations
+- Some operations require specific permissions
+- API responses can change format
+
+### Environment Setup
+- Environment variables must be properly configured
+- Dependencies need to be installed
+- Webex API access requires proper credentials
+
+## Effective Approaches
+
+### For Batch Operations
+- Process items individually within a loop
+- Collect and report errors without stopping the entire process
+- Provide summary statistics at the end
+
+### For New Features
+- Follow existing patterns for consistency
+- Leverage existing utility functions
+- Maintain similar error handling approaches
+
+## Project Evolution Notes
+
+### Initial Setup
+- Memory bank initialized to maintain project context
+- Core documentation established
+- Project structure documented
+
+This file will be updated as new patterns and preferences are discovered through working with the project.
