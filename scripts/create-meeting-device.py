@@ -94,5 +94,5 @@ def process_csv(input_csv, output_csv):
 
 if __name__ == "__main__":
     input_csv = "/Users/jbergoon/PycharmProjects/WebexTools/input/deviceinputmeet.csv"
-    output_csv = "/Users/jbergoon/PycharmProjects/WebexTools/output/results.csv"
+    output_csv = "/Users/jbergoon/PycharmProjects/WebexTools/output/meeting-activation-results.csv"
     process_csv(input_csv, output_csv)

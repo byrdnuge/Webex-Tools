@@ -130,8 +130,8 @@ def activate_devices_from_csv(input_csv, output_csv):
 
 if __name__ == "__main__":
     # Input CSV file path (should contain a column named 'email')
-    input_csv = "people_list.csv"
+    input_csv = "../input/people_list.csv"
     # Output CSV file path
-    output_csv = "activation_codes.csv"
+    output_csv = "../output/activation_codes.csv"
 
     activate_devices_from_csv(input_csv, output_csv)

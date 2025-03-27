@@ -16,3 +16,5 @@ people_list.csv
 /output/results.csv
 /input/workspaces.csv
 /logs/wxcadm_tests.log
+input/.DS_Store
+output/meeting-activation-results.csv
