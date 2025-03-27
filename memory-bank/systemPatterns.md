@@ -1,18 +1,27 @@
 # System Patterns: WebexTools
 
 ## Architecture Overview
-WebexTools follows a script-based architecture with shared utility functions. Each script is designed to perform a specific task while leveraging common functionality for API interactions.
+WebexTools is transitioning from a script-based architecture to a unified CLI tool with a modular command structure. The new architecture uses Poetry for dependency management, rich-click for the CLI interface, and pydantic for data validation.
 
 ```mermaid
 flowchart TD
-    Scripts[Individual Scripts] --> Utils[API Utilities]
+    CLI[CLI Entry Point] --> Commands[Command Groups]
+    Commands --> Models[Pydantic Models]
+    Commands --> Utils[API Utilities]
     Utils --> WebexAPI[Webex API]
     
-    subgraph Scripts
-        Activate[Activate Devices]
-        Create[Create Devices]
-        Lookup[User/Number Lookup]
-        Rename[Rename Workspaces]
+    subgraph Commands
+        DeviceCommands[Device Commands]
+        WorkspaceCommands[Workspace Commands]
+        UserCommands[User/Number Commands]
+        LegalHoldCommands[Legal Hold Commands]
+    end
+    
+    subgraph Models
+        DeviceModels[Device Models]
+        WorkspaceModels[Workspace Models]
+        UserModels[User Models]
+        ConfigModels[Configuration Models]
     end
     
     subgraph Utils
@@ -26,39 +35,53 @@ flowchart TD
 ## Design Patterns
 
 ### Command Pattern
-Each script acts as a standalone command with specific parameters and functionality. This allows for easy addition of new commands without modifying existing code.
+The CLI tool uses a command pattern with nested command groups. Each command is implemented as a function with rich-click decorators for argument parsing and help text.
 
-### Utility Library
-Common functionality is abstracted into utility functions that handle:
-- Authentication
-- API request formatting
-- Response parsing
-- Error handling
+### Model-View-Controller (MVC)
+- **Models**: Pydantic models define data structures and validation rules
+- **Views**: Rich-click handles command-line interface and output formatting
+- **Controllers**: Command functions implement business logic and API interactions
+
+### Dependency Injection
+The CLI tool uses dependency injection to provide services (like API clients) to commands, making them easier to test and maintain.
 
 ### Configuration Management
-Environment variables and configuration files are used to manage sensitive information like API keys and default settings.
+Poetry manages project dependencies, while environment variables and configuration files handle sensitive information like API keys and default settings.
 
 ## Component Relationships
 
-### Script Structure
-Each script typically follows this pattern:
-1. Parse command-line arguments
-2. Initialize API utilities
-3. Perform specific operations
-4. Handle and report results
+### Command Structure
+The CLI tool follows this hierarchical structure:
+```
+webex-tools
+├── devices
+│   ├── activate
+│   ├── create-meeting
+│   └── create-flex
+├── workspaces
+│   ├── create
+│   └── rename
+├── users
+│   ├── lookup
+│   └── number-lookup
+└── legal-hold (future)
+    └── process-export
+```
 
 ### Data Flow
 ```mermaid
 flowchart LR
-    Input[Input Data] --> Validation[Validation]
-    Validation --> Processing[Processing]
+    Input[CLI Input] --> ArgParsing[Argument Parsing]
+    ArgParsing --> Validation[Pydantic Validation]
+    Validation --> Processing[Command Processing]
     Processing --> APIRequest[API Request]
     APIRequest --> ResponseHandling[Response Handling]
-    ResponseHandling --> Output[Output/Reporting]
+    ResponseHandling --> Output[Formatted Output]
 ```
 
 ## Error Handling Strategy
-- Input validation before API calls
+- Input validation using pydantic models
+- Centralized error handling with rich formatting
 - Graceful handling of API errors
 - Clear error messages with suggested resolutions
 - Logging of operations for troubleshooting
@@ -66,20 +89,23 @@ flowchart LR
 ## Batch Processing Pattern
 For operations that need to be performed on multiple items:
 1. Read data from CSV or other structured input
-2. Process each item individually
-3. Collect results and errors
-4. Provide summary report
+2. Validate data using pydantic models
+3. Process each item individually with progress indication
+4. Collect results and errors
+5. Provide summary report with rich formatting
 
 ## Authentication Pattern
 Authentication is handled through:
 - Environment variables for API tokens
+- Configuration files for persistent settings
 - Token validation before operations
 - Refresh mechanisms when needed
 - Clear error messages for authentication failures
 
 ## Extension Points
 The system is designed to be extended through:
-- Adding new scripts for additional operations
+- Adding new command groups and commands
+- Creating new pydantic models for data validation
 - Enhancing utility functions for broader API coverage
 - Implementing new input/output formats
 - Creating higher-level workflows that combine multiple operations

@@ -1,16 +1,18 @@
 # Active Context: WebexTools
 
 ## Current Focus
-The current focus of the WebexTools project is on establishing a solid foundation for future development and maintenance. This includes:
+The current focus of the WebexTools project is on transforming the collection of individual scripts into a unified CLI tool. This includes:
 
-1. **Documentation**: Creating comprehensive documentation for the existing scripts and utilities
-2. **Memory Bank Initialization**: Setting up the memory bank structure to facilitate ongoing development
-3. **Code Organization**: Ensuring the codebase is well-structured and follows consistent patterns
+1. **CLI Interface Development**: Creating a unified CLI interface using rich-click or similar library
+2. **Data Validation**: Implementing pydantic models for data structure validation
+3. **Project Structure**: Reorganizing the codebase into a distributable package
+4. **Dependency Management**: Setting up Poetry for dependency management and virtual environment
 
 ## Recent Changes
 - Created memory bank structure with core documentation files
 - Organized project documentation to support future development
 - Established system patterns and architectural documentation
+- Pushed memory bank documentation to GitHub
 
 ## Active Decisions
 
@@ -18,37 +20,46 @@ The current focus of the WebexTools project is on establishing a solid foundatio
 - Using Markdown for all documentation files for readability and version control compatibility
 - Implementing a memory bank structure to maintain project context across sessions
 - Documenting both technical implementation details and product context
+- Adding task tracking to the memory bank to monitor progress
 
 ### Development Approach
-- Maintaining script-based architecture for simplicity and modularity
-- Focusing on reusable utility functions for common operations
-- Prioritizing clear error handling and user feedback
+- Transitioning from script-based architecture to a unified CLI tool
+- Using Poetry for dependency management and packaging
+- Implementing pydantic models for data validation
+- Using rich-click or similar for an enhanced CLI experience
+- Creating a distributable package that can be installed as a command-line tool
 
 ## Next Steps
 
 ### Short-term Tasks
-- Review existing scripts to identify common patterns and potential improvements
-- Explore opportunities for additional utility functions to reduce code duplication
-- Consider adding more comprehensive error handling and logging
+- Set up Poetry project structure
+- Create the main CLI entry point
+- Implement pydantic models for data validation
+- Migrate existing script functionality to the new CLI structure
+- Implement rich-click or similar for enhanced CLI experience
 
 ### Medium-term Goals
-- Develop additional scripts for common Webex management tasks
-- Improve CSV processing capabilities for more complex batch operations
-- Add more robust validation for input parameters
+- Complete the migration of all existing scripts to the unified CLI
+- Add comprehensive documentation and help text for all commands
+- Implement improved error handling and logging
+- Create a distributable package
 
 ### Long-term Vision
-- Create a more cohesive framework that unifies the individual scripts
-- Potentially develop a simple CLI interface for easier script discovery and usage
+- Add new functionality for Webex legal hold export processing
 - Consider adding a basic web interface for non-technical users
+- Expand the tool's capabilities to cover more Webex API functionality
 
 ## Open Questions
 - What additional Webex API endpoints should be prioritized for integration?
-- Should the project move toward a more unified framework or maintain the current script-based approach?
-- Are there opportunities to improve the authentication and token management process?
+- What is the best structure for the CLI commands and subcommands?
+- How should we handle configuration and credentials in the packaged version?
+- What specific features are needed for the Webex legal hold export processing tool?
 
 ## Current Challenges
 - Maintaining compatibility with Webex API changes
-- Balancing simplicity for users with robust error handling
+- Ensuring a smooth transition from individual scripts to unified CLI
+- Balancing feature richness with usability
 - Ensuring security best practices for API token management
+- Creating an intuitive command structure that makes sense to users
 
 This active context document captures the current state of the WebexTools project and will be updated regularly as development progresses.

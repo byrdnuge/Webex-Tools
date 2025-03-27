@@ -4,35 +4,56 @@ This file captures important patterns, preferences, and project intelligence for
 
 ## Code Patterns
 
-### Script Structure
-- Scripts typically follow a main function pattern with argument parsing at the top
-- Error handling is done through try/except blocks
-- API interactions are abstracted through utility functions when possible
-- CSV operations use the standard Python csv module
+### CLI Structure
+- Commands are organized in a hierarchical structure with command groups
+- Each command is implemented as a function with rich-click decorators
+- Pydantic models are used for data validation and settings management
+- Error handling is centralized with rich formatting
+- API interactions are abstracted through utility functions
 
 ### Naming Conventions
-- Script filenames use kebab-case (e.g., `activate-room-device.py`) or snake_case (e.g., `activate_devices_from_csv.py`)
+- Module names use snake_case
+- Command group names use kebab-case in CLI but snake_case in code
 - Function names use snake_case
+- Pydantic models use PascalCase
 - Constants are typically UPPER_SNAKE_CASE
 - Variables use snake_case
 
 ### Documentation Style
-- Docstrings for functions and modules
+- Docstrings for functions and modules (Google style)
+- Type hints for function parameters and return values
+- Rich help text for CLI commands
 - Inline comments for complex logic
 - README.md for project-level documentation
 - Memory bank for comprehensive project context
 
+## CLI Patterns
+
+### Command Structure
+- Main command groups: devices, workspaces, users, legal-hold
+- Each command group contains related subcommands
+- Common options are consistent across similar commands
+- Help text is comprehensive and includes examples
+
+### Input Handling
+- Required parameters use arguments
+- Optional parameters use options with flags
+- Complex data structures use JSON or CSV files as input
+- Interactive prompts for missing required information when possible
+
 ## API Interaction Patterns
 
 ### Authentication
-- API tokens are stored in environment variables
+- API tokens are stored in environment variables or config files
 - The .env.example file shows required environment variables
 - Tokens need to be manually renewed when they expire
+- Authentication is handled at the CLI startup
 
 ### Error Handling
-- HTTP errors are caught and reported with context
-- Input validation is performed before API calls when possible
+- HTTP errors are caught and reported with context and rich formatting
+- Input validation is performed using pydantic models
 - Batch operations continue on individual item failures when possible
+- Error summaries are provided for batch operations
 
 ## User Preferences
 
@@ -40,11 +61,14 @@ This file captures important patterns, preferences, and project intelligence for
 - Comprehensive documentation is valued
 - Memory bank structure for maintaining project context
 - Clear examples and usage instructions
+- Rich help text in the CLI
 
 ### Development Workflow
-- Script-based approach for simplicity
+- Poetry for dependency management
+- CLI-based approach for usability
 - Focus on reusable components
 - Prioritize reliability and error handling
+- Rich formatting for terminal output
 
 ## Known Challenges
 
@@ -52,23 +76,28 @@ This file captures important patterns, preferences, and project intelligence for
 - Rate limiting requires careful handling for batch operations
 - Some operations require specific permissions
 - API responses can change format
+- Authentication token expiration
 
 ### Environment Setup
+- Poetry must be installed for development
 - Environment variables must be properly configured
-- Dependencies need to be installed
+- Dependencies need to be installed via Poetry
 - Webex API access requires proper credentials
 
 ## Effective Approaches
 
 ### For Batch Operations
-- Process items individually within a loop
+- Process items individually within a loop with progress indication
+- Validate data using pydantic models before processing
 - Collect and report errors without stopping the entire process
-- Provide summary statistics at the end
+- Provide summary statistics with rich formatting at the end
 
-### For New Features
-- Follow existing patterns for consistency
+### For New Commands
+- Follow existing command group structure
+- Use pydantic models for data validation
 - Leverage existing utility functions
-- Maintain similar error handling approaches
+- Maintain consistent CLI patterns
+- Provide comprehensive help text and examples
 
 ## Project Evolution Notes
 
@@ -76,5 +105,11 @@ This file captures important patterns, preferences, and project intelligence for
 - Memory bank initialized to maintain project context
 - Core documentation established
 - Project structure documented
+
+### CLI Transition
+- Moving from individual scripts to unified CLI
+- Implementing Poetry for dependency management
+- Using rich-click for enhanced CLI experience
+- Adding pydantic models for data validation
 
 This file will be updated as new patterns and preferences are discovered through working with the project.
