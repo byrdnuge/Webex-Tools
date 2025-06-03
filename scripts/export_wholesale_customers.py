@@ -23,6 +23,8 @@ import json
 import requests
 import asyncio
 import aiohttp
+import argparse
+import re
 from typing import Dict, List, Any, Optional
 from dotenv import load_dotenv
 from datetime import datetime
@@ -56,6 +58,10 @@ def get_api_token() -> str:
             "WEBEX_ACCESS_TOKEN not found in environment variables. "
             "Please create a .env file with your API token."
         )
+    
+    # Remove surrounding quotes if present (common in .env files)
+    token = token.strip('"\'')
+    
     return token
 
 def get_headers() -> Dict[str, str]:
@@ -70,9 +76,118 @@ def get_headers() -> Dict[str, str]:
         "Content-Type": "application/json"
     }
 
-def get_wholesale_customers() -> List[Dict[str, Any]]:
+def parse_arguments() -> argparse.Namespace:
     """
-    Retrieve all wholesale customers from the Webex API with proper offset-based pagination.
+    Parse command line arguments.
+    
+    Returns:
+        argparse.Namespace: Parsed arguments
+    """
+    parser = argparse.ArgumentParser(
+        description="Export wholesale customers information to CSV with organization filtering",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Export all customers
+  python scripts/export_wholesale_customers.py
+  
+  # Export customers for specific organizations by display name
+  python scripts/export_wholesale_customers.py --org-names "Velvet Lab,Acme Corp"
+  
+  # Export customers for specific organization IDs
+  python scripts/export_wholesale_customers.py --org-ids "Y2lzY29zcGFyazovL3VzL09SR0FOSVpBVElPTi8zZTE5OGUzZC0zNzY1LTQ3YjAtYmYwZi0yNzQ5OTc4ZTUyNmM"
+  
+  # Export customers matching a pattern
+  python scripts/export_wholesale_customers.py --org-pattern ".*Lab.*"
+  
+  # Export customers containing specific text
+  python scripts/export_wholesale_customers.py --org-contains "velvet"
+  
+  # Export with custom filename
+  python scripts/export_wholesale_customers.py --output "my_customers.csv"
+        """
+    )
+    
+    # Organization filtering options
+    filter_group = parser.add_argument_group("Organization Filtering")
+    filter_group.add_argument(
+        "--org-names",
+        help="Comma-separated list of exact organization display names to include"
+    )
+    filter_group.add_argument(
+        "--org-ids",
+        help="Comma-separated list of organization IDs to include"
+    )
+    filter_group.add_argument(
+        "--external-ids",
+        help="Comma-separated list of external IDs to include"
+    )
+    filter_group.add_argument(
+        "--status",
+        choices=["provisioning", "provisioned", "error"],
+        help="Filter by customer status"
+    )
+    filter_group.add_argument(
+        "--org-pattern",
+        help="Regex pattern to match organization display names"
+    )
+    filter_group.add_argument(
+        "--org-contains",
+        help="Include organizations containing this text (case-insensitive)"
+    )
+    filter_group.add_argument(
+        "--exclude-orgs",
+        help="Comma-separated list of organization display names to exclude"
+    )
+    
+    # Output options
+    output_group = parser.add_argument_group("Output Options")
+    output_group.add_argument(
+        "--output",
+        help="Custom filename for the CSV export (default: timestamped filename)"
+    )
+    output_group.add_argument(
+        "--output-dir",
+        default=OUTPUT_DIR,
+        help=f"Directory for output files (default: {OUTPUT_DIR})"
+    )
+    
+    # Processing options
+    processing_group = parser.add_argument_group("Processing Options")
+    processing_group.add_argument(
+        "--batch-size",
+        type=int,
+        default=BATCH_SIZE,
+        help=f"Number of customers to process per page (default: {BATCH_SIZE})"
+    )
+    processing_group.add_argument(
+        "--max-workers",
+        type=int,
+        default=MAX_WORKERS,
+        help=f"Number of parallel workers for org details (default: {MAX_WORKERS})"
+    )
+    processing_group.add_argument(
+        "--delay",
+        type=float,
+        default=RATE_LIMIT_DELAY,
+        help=f"Delay between API calls in seconds (default: {RATE_LIMIT_DELAY})"
+    )
+    
+    # Additional options
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose logging"
+    )
+    
+    return parser.parse_args()
+
+def get_wholesale_customers(args: argparse.Namespace = None) -> List[Dict[str, Any]]:
+    """
+    Retrieve wholesale customers from the Webex API with proper offset-based pagination and API-level filtering.
+    
+    Args:
+        args (argparse.Namespace, optional): Command line arguments for filtering
     
     Returns:
         List[Dict[str, Any]]: List of wholesale customers
@@ -84,17 +199,56 @@ def get_wholesale_customers() -> List[Dict[str, Any]]:
     offset = 0
     
     try:
-        print("Fetching wholesale customers with offset-based pagination...")
+        # Build base parameters
+        base_params = {
+            "max": BATCH_SIZE if args is None else args.batch_size,
+        }
+        
+        # Add API-level filters if specified
+        if args:
+            if args.org_ids:
+                # For single orgId, use the orgId parameter
+                org_ids = [org_id.strip() for org_id in args.org_ids.split(',')]
+                if len(org_ids) == 1:
+                    base_params["orgId"] = org_ids[0]
+                    print(f"Using API filter: orgId = {org_ids[0]}")
+                else:
+                    print("Note: Multiple orgIds specified, will fetch all and filter locally")
+            
+            if args.external_ids:
+                # For single externalId, use the externalId parameter
+                external_ids = [ext_id.strip() for ext_id in args.external_ids.split(',')]
+                if len(external_ids) == 1:
+                    base_params["externalId"] = external_ids[0]
+                    print(f"Using API filter: externalId = {external_ids[0]}")
+                else:
+                    print("Note: Multiple externalIds specified, will fetch all and filter locally")
+            
+            if args.status:
+                base_params["status"] = args.status
+                print(f"Using API filter: status = {args.status}")
+        
+        filter_description = "all customers"
+        filter_parts = []
+        if "orgId" in base_params:
+            filter_parts.append(f"orgId {base_params['orgId']}")
+        if "externalId" in base_params:
+            filter_parts.append(f"externalId {base_params['externalId']}")
+        if "status" in base_params:
+            filter_parts.append(f"status {base_params['status']}")
+        
+        if filter_parts:
+            filter_description = f"customers with {', '.join(filter_parts)}"
+        
+        print(f"Fetching {filter_description} with offset-based pagination...")
         
         while True:
             # Build URL with pagination parameters using offset
             url = f"{API_BASE_URL}/wholesale/customers"
-            params = {
-                "max": BATCH_SIZE,
-                "offset": offset
-            }
+            params = base_params.copy()
+            params["offset"] = offset
             
-            print(f"Fetching customers with offset {offset} (max {BATCH_SIZE})...")
+            print(f"Fetching customers with offset {offset} (max {params['max']})...")
             
             response = requests.get(url, headers=get_headers(), params=params)
             response.raise_for_status()
@@ -109,7 +263,7 @@ def get_wholesale_customers() -> List[Dict[str, Any]]:
             print(f"Retrieved {len(customers)} customers (total: {len(all_customers)})")
             
             # Check if we got fewer customers than requested (last page)
-            if len(customers) < BATCH_SIZE:
+            if len(customers) < params["max"]:
                 print("Reached last page of results.")
                 break
             
@@ -117,7 +271,8 @@ def get_wholesale_customers() -> List[Dict[str, Any]]:
             offset += len(customers)
             
             # Rate limiting
-            time.sleep(RATE_LIMIT_DELAY)
+            delay = RATE_LIMIT_DELAY if args is None else args.delay
+            time.sleep(delay)
             
         print(f"Total wholesale customers retrieved: {len(all_customers)}")
         return all_customers
@@ -230,7 +385,102 @@ def flatten_dict(data: Dict[str, Any], parent_key: str = '', sep: str = '_') -> 
     
     return dict(items)
 
-def export_to_csv(customers_data: List[Dict[str, Any]], filename: str = None) -> str:
+def apply_early_filters(customers: List[Dict[str, Any]], args: argparse.Namespace) -> List[Dict[str, Any]]:
+    """
+    Apply filtering that can be done before fetching org details (for multiple values that couldn't be done at API level).
+    
+    Args:
+        customers (List[Dict[str, Any]]): List of customer data
+        args (argparse.Namespace): Command line arguments
+        
+    Returns:
+        List[Dict[str, Any]]: Filtered list of customers
+    """
+    filtered_customers = customers.copy()
+    original_count = len(filtered_customers)
+    
+    # Apply multiple orgId filtering (when API couldn't handle it)
+    if args.org_ids and ',' in args.org_ids:
+        org_ids = [org_id.strip() for org_id in args.org_ids.split(',')]
+        filtered_customers = [
+            customer for customer in filtered_customers
+            if customer.get('orgId', '').strip() in org_ids
+        ]
+        print(f"Local filter by organization IDs: {len(filtered_customers)} customers match")
+    
+    # Apply multiple externalId filtering (when API couldn't handle it)
+    if args.external_ids and ',' in args.external_ids:
+        external_ids = [ext_id.strip() for ext_id in args.external_ids.split(',')]
+        filtered_customers = [
+            customer for customer in filtered_customers
+            if customer.get('externalId', '').strip() in external_ids
+        ]
+        print(f"Local filter by external IDs: {len(filtered_customers)} customers match")
+    
+    if len(filtered_customers) != original_count:
+        print(f"Local filtering: {original_count} → {len(filtered_customers)} customers")
+    
+    return filtered_customers
+
+def apply_post_org_filters(customers_data: List[Dict[str, Any]], args: argparse.Namespace) -> List[Dict[str, Any]]:
+    """
+    Apply organization filtering that requires org details (display name-based filtering).
+    
+    Args:
+        customers_data (List[Dict[str, Any]]): List of customer data with org details
+        args (argparse.Namespace): Command line arguments
+        
+    Returns:
+        List[Dict[str, Any]]: Filtered list of customers
+    """
+    filtered_customers = customers_data.copy()
+    original_count = len(filtered_customers)
+    
+    # Apply display name-based filters (these require org details to be fetched first)
+    if args.org_names:
+        org_names = [name.strip() for name in args.org_names.split(',')]
+        filtered_customers = [
+            customer for customer in filtered_customers
+            if customer.get('org_displayName', '').strip() in org_names
+        ]
+        print(f"Filtered by organization names: {len(filtered_customers)} customers match")
+    
+    elif args.org_pattern:
+        try:
+            pattern = re.compile(args.org_pattern, re.IGNORECASE)
+            filtered_customers = [
+                customer for customer in filtered_customers
+                if pattern.search(customer.get('org_displayName', ''))
+            ]
+            print(f"Filtered by pattern '{args.org_pattern}': {len(filtered_customers)} customers match")
+        except re.error as e:
+            raise ValueError(f"Invalid regex pattern '{args.org_pattern}': {e}")
+    
+    elif args.org_contains:
+        search_text = args.org_contains.lower()
+        filtered_customers = [
+            customer for customer in filtered_customers
+            if search_text in customer.get('org_displayName', '').lower()
+        ]
+        print(f"Filtered by contains '{args.org_contains}': {len(filtered_customers)} customers match")
+    
+    # Apply exclusion filter
+    if args.exclude_orgs:
+        exclude_names = [name.strip() for name in args.exclude_orgs.split(',')]
+        before_exclude = len(filtered_customers)
+        filtered_customers = [
+            customer for customer in filtered_customers
+            if customer.get('org_displayName', '').strip() not in exclude_names
+        ]
+        excluded_count = before_exclude - len(filtered_customers)
+        print(f"Excluded {excluded_count} customers from specified organizations")
+    
+    if len(filtered_customers) != original_count:
+        print(f"Post-org-details filtering: {original_count} → {len(filtered_customers)} customers")
+    
+    return filtered_customers
+
+def export_to_csv(customers_data: List[Dict[str, Any]], filename: str = None, output_dir: str = OUTPUT_DIR) -> str:
     """
     Export customers data to a CSV file.
     
@@ -246,8 +496,8 @@ def export_to_csv(customers_data: List[Dict[str, Any]], filename: str = None) ->
         filename = f"wholesale_customers_export_{timestamp}.csv"
     
     # Ensure output directory exists
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    filepath = os.path.join(OUTPUT_DIR, filename)
+    os.makedirs(output_dir, exist_ok=True)
+    filepath = os.path.join(output_dir, filename)
     
     if not customers_data:
         print("No customer data to export.")
@@ -287,18 +537,45 @@ def main():
     """
     Main function to run the script.
     """
-    print("Webex Wholesale Customers Export Script")
-    print("=======================================")
-    
     try:
-        # Step 1: Get all wholesale customers
-        customers = get_wholesale_customers()
+        # Parse command line arguments
+        args = parse_arguments()
+        
+        print("Webex Wholesale Customers Export Script")
+        print("=======================================")
+        
+        # Display filtering info if any filters are applied
+        if any([args.org_names, args.org_ids, args.org_pattern, args.org_contains, args.exclude_orgs]):
+            print("Filtering options:")
+            if args.org_names:
+                print(f"- Organization names: {args.org_names}")
+            if args.org_ids:
+                print(f"- Organization IDs: {args.org_ids}")
+            if args.org_pattern:
+                print(f"- Organization pattern: {args.org_pattern}")
+            if args.org_contains:
+                print(f"- Organization contains: {args.org_contains}")
+            if args.exclude_orgs:
+                print(f"- Excluded organizations: {args.exclude_orgs}")
+            print()
+        
+        # Step 1: Get wholesale customers (with API-level filtering if applicable)
+        customers = get_wholesale_customers(args)
         
         if not customers:
             print("No wholesale customers found.")
             return
         
-        # Step 2: Enrich customer data with organization details using parallel processing
+        # Step 2: Apply any remaining local filters (for multiple values that couldn't be done at API level)
+        if (args.org_ids and ',' in args.org_ids) or (args.external_ids and ',' in args.external_ids):
+            print("\nApplying additional local filters...")
+            customers = apply_early_filters(customers, args)
+            
+            if not customers:
+                print("No customers match the specified filters.")
+                return
+        
+        # Step 3: Enrich customer data with organization details using parallel processing
         print("\nFetching organization details using parallel processing...")
         org_details_map = get_organization_details_parallel(customers)
         
@@ -327,24 +604,36 @@ def main():
             
             enriched_customers.append(enriched_customer)
         
-        # Step 3: Export to CSV
+        # Step 4: Apply post-organization filters (display name-based) after fetching org details
+        if any([args.org_names, args.org_pattern, args.org_contains, args.exclude_orgs]):
+            print("\nApplying organization filters (by display name)...")
+            enriched_customers = apply_post_org_filters(enriched_customers, args)
+            
+            if not enriched_customers:
+                print("No customers match the specified filters.")
+                return
+        
+        # Step 5: Export to CSV
         print("\nExporting data to CSV...")
-        csv_path = export_to_csv(enriched_customers)
+        csv_path = export_to_csv(enriched_customers, args.output, args.output_dir)
         
         print(f"\nExport completed successfully!")
         print(f"CSV file created: {csv_path}")
         print(f"Total customers exported: {len(enriched_customers)}")
         
-        # Step 4: Display summary
+        # Step 5: Display summary
         print("\nSummary:")
-        customers_with_org_names = sum(1 for c in enriched_customers 
-                                     if c.get('org_displayName') and 
+        customers_with_org_names = sum(1 for c in enriched_customers
+                                     if c.get('org_displayName') and
                                      c['org_displayName'] not in ['Unable to retrieve', 'No orgId available'])
         print(f"- Customers with organization names: {customers_with_org_names}")
         print(f"- Customers without organization names: {len(enriched_customers) - customers_with_org_names}")
         
     except Exception as e:
         print(f"An error occurred: {e}")
+        return 1
+    
+    return 0
 
 if __name__ == "__main__":
-    main()
+    exit(main())
