@@ -57,6 +57,10 @@ def get_api_token() -> str:
             "WEBEX_ACCESS_TOKEN not found in environment variables. "
             "Please create a .env file with your API token."
         )
+    
+    # Remove surrounding quotes if present (common in .env files)
+    token = token.strip('"\'')
+    
     return token
 
 def get_headers() -> Dict[str, str]:
