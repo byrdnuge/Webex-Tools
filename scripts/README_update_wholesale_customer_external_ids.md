@@ -1,6 +1,6 @@
 # Webex Wholesale Customer External ID Batch Update Script
 
-This script updates external IDs for wholesale customers by reading from a CSV export and using the Update Wholesale Customer API. It replaces the existing `externalId` with the `customerId` value for each customer while preserving all other customer data.
+This script updates external IDs for wholesale customers by reading from a CSV export and using the simplified Update Wholesale Customer API. It replaces the existing `externalId` with the `customerId` value for each customer using a streamlined API that only requires external ID and packages.
 
 ## Overview
 
@@ -129,25 +129,37 @@ The script expects a CSV file with the following columns (as exported by [`expor
 - `customerId`: Value to use as new external ID
 - `org_details_displayName`: Organization display name
 - `packages`: Comma-separated package names
-- `address_addressLine1`: Primary address line
-- `address_city`: City
-- `address_country`: Country code (e.g., "US")
 
 ### Optional Columns
 - `externalId`: Current external ID (for reporting)
-- `address_addressLine2`: Secondary address line
-- `address_stateOrProvince`: State or province
-- `address_zipOrPostalCode`: ZIP or postal code
+
+**Note**: Address fields are no longer required due to the simplified API.
 
 ## API Endpoint Used
 
 **Update Wholesale Customer**: `PUT https://webexapis.com/v1/wholesale/customers/{customerId}`
 
-The script constructs complete API requests including:
-- New external ID (from `customerId` column)
-- All existing packages
-- Complete address information
-- Provisioning parameters with default location settings
+### Simplified API Request Structure
+The script now uses the simplified API that only requires:
+```json
+{
+    "externalId": "Demo12345",
+    "packages": [
+        "webex_voice",
+        "webex_meetings",
+        "common_area_calling",
+        "webex_calling",
+        "webex_suite",
+        "cx_essentials"
+    ]
+}
+```
+
+**Benefits of Simplified API**:
+- No address information required
+- No provisioning parameters needed
+- Faster processing and fewer validation requirements
+- Reduced chance of API errors due to missing address fields
 
 ## Output Reports
 
@@ -198,8 +210,9 @@ Detailed Results:
 ### Data Validation
 The script validates each customer record for:
 - Required fields (id, customerId, packages)
-- Address completeness (addressLine1, city, country)
 - Package format validation
+
+**Note**: Address validation has been removed due to the simplified API.
 
 ### API Error Handling
 - Graceful handling of HTTP errors with detailed logging
@@ -361,8 +374,10 @@ python scripts/update_wholesale_customer_external_ids.py --dry-run --input input
 
 ## Notes
 
-- The script preserves all existing customer data (packages, address, etc.)
+- The script uses the simplified API that only requires `externalId` and `packages`
 - Only the `externalId` field is updated to match the `customerId` value
+- Address and provisioning parameters are no longer required or sent
 - Reports are automatically timestamped and saved to the output directory
 - The script creates the output directory if it doesn't exist
 - Processing can be safely interrupted and resumed using customer IDs
+- This simplified approach reduces API errors and improves processing speed

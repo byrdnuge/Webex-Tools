@@ -3,7 +3,7 @@
 Webex Wholesale Customer External ID Batch Update Script
 
 This script updates external IDs for wholesale customers by reading from a CSV export
-and using the Update Wholesale Customer API. It replaces the existing externalId 
+and using the simplified Update Wholesale Customer API. It replaces the existing externalId
 with the customerId value for each customer.
 
 The script supports:
@@ -14,7 +14,11 @@ The script supports:
 - Comprehensive reporting of results
 
 API Endpoint: PUT https://webexapis.com/v1/wholesale/customers/{customerId}
+Request Body: {"externalId": "new_id", "packages": ["package1", "package2"]}
 Authentication: Webex API token stored in .env file
+
+Note: This version uses the simplified API that only requires externalId and packages.
+No address or provisioning parameters are needed.
 """
 
 import os
@@ -37,9 +41,6 @@ API_BASE_URL = "https://webexapis.com/v1"
 OUTPUT_DIR = "output"
 DEFAULT_BATCH_SIZE = 5
 DEFAULT_DELAY = 0.2
-DEFAULT_TIMEZONE = "America/Chicago"
-DEFAULT_LANGUAGE = "en_us"
-DEFAULT_LOCATION_NAME = "Head Office"
 
 def get_api_token() -> str:
     """
@@ -314,49 +315,15 @@ def parse_packages(packages_str: str) -> List[str]:
     packages = [pkg.strip() for pkg in packages_str.split(',')]
     return [pkg for pkg in packages if pkg]  # Remove empty strings
 
-def build_address_object(customer: Dict[str, str]) -> Dict[str, str]:
-    """
-    Build address object from CSV customer data.
-    
-    Args:
-        customer (Dict[str, str]): Customer record from CSV
-        
-    Returns:
-        Dict[str, str]: Address object for API request
-    """
-    address = {}
-    
-    # Required fields
-    if customer.get('address_addressLine1'):
-        address['addressLine1'] = customer['address_addressLine1']
-    
-    if customer.get('address_city'):
-        address['city'] = customer['address_city']
-    
-    if customer.get('address_country'):
-        address['country'] = customer['address_country']
-    
-    # Optional fields
-    if customer.get('address_addressLine2'):
-        address['addressLine2'] = customer['address_addressLine2']
-    
-    if customer.get('address_stateOrProvince'):
-        address['stateOrProvince'] = customer['address_stateOrProvince']
-    
-    if customer.get('address_zipOrPostalCode'):
-        address['zipOrPostalCode'] = customer['address_zipOrPostalCode']
-    
-    return address
-
 def build_update_request(customer: Dict[str, str]) -> Dict[str, Any]:
     """
-    Build the API request body for updating a customer.
+    Build the simplified API request body for updating a customer.
     
     Args:
         customer (Dict[str, str]): Customer record from CSV
         
     Returns:
-        Dict[str, Any]: API request body
+        Dict[str, Any]: Simplified API request body
     """
     # Use customerId as the new externalId
     new_external_id = customer['customerId']
@@ -364,24 +331,10 @@ def build_update_request(customer: Dict[str, str]) -> Dict[str, Any]:
     # Parse packages
     packages = parse_packages(customer.get('packages', ''))
     
-    # Build address
-    address = build_address_object(customer)
-    
-    # Build request body
+    # Build simplified request body - no address or provisioning parameters needed
     request_body = {
         "externalId": new_external_id,
-        "packages": packages,
-        "address": address,
-        "provisioningParameters": {
-            "calling": {
-                "location": {
-                    "name": DEFAULT_LOCATION_NAME,
-                    "address": address,  # Reuse the same address
-                    "timezone": DEFAULT_TIMEZONE,
-                    "language": DEFAULT_LANGUAGE
-                }
-            }
-        }
+        "packages": packages
     }
     
     return request_body
@@ -398,7 +351,7 @@ def validate_customer_data(customer: Dict[str, str]) -> Tuple[bool, List[str]]:
     """
     errors = []
     
-    # Check required fields
+    # Check required fields for simplified API
     if not customer.get('id'):
         errors.append("Missing customer ID")
     
@@ -408,15 +361,7 @@ def validate_customer_data(customer: Dict[str, str]) -> Tuple[bool, List[str]]:
     if not customer.get('packages'):
         errors.append("Missing packages")
     
-    # Check address requirements
-    if not customer.get('address_addressLine1'):
-        errors.append("Missing address line 1")
-    
-    if not customer.get('address_city'):
-        errors.append("Missing city")
-    
-    if not customer.get('address_country'):
-        errors.append("Missing country")
+    # Note: Address fields are no longer required for the simplified API
     
     return len(errors) == 0, errors
 
