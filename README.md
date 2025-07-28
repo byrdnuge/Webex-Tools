@@ -7,7 +7,7 @@ WebexTools is a toolkit for managing Cisco Webex devices and resources. It provi
 WebexTools is evolving from a collection of individual Python scripts to a unified CLI tool. This README covers both approaches:
 
 1. **Original Scripts**: Individual Python scripts for specific tasks (located in the `scripts/` directory)
-2. **New CLI Tool**: A unified command-line interface with a consistent structure (located in the `webex-tools/` directory)
+2. **New CLI Tool**: A unified command-line interface with a consistent structure (located in the `webex-tools/` directory but still under development )
 
 ## Features
 
