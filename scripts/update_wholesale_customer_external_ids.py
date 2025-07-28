@@ -367,7 +367,7 @@ def validate_customer_data(customer: Dict[str, str]) -> Tuple[bool, List[str]]:
 
 def update_wholesale_customer(customer_id: str, request_body: Dict[str, Any], delay: float = 0.2) -> Tuple[bool, Dict[str, Any]]:
     """
-    Call the Update Wholesale Customer API.
+    Call the Update Wholesale Customer API with retry logic for 429 errors.
     
     Args:
         customer_id (str): The customer ID for the API endpoint
@@ -378,23 +378,75 @@ def update_wholesale_customer(customer_id: str, request_body: Dict[str, Any], de
         Tuple[bool, Dict[str, Any]]: (success, response_data)
     """
     url = f"{API_BASE_URL}/wholesale/customers/{customer_id}"
+    max_retries = 3
+    retry_delays = [5, 10, 30]  # Exponential backoff delays in seconds
     
-    try:
-        response = requests.put(url, headers=get_headers(), json=request_body)
-        response.raise_for_status()
-        
-        # Rate limiting
-        time.sleep(delay)
-        
-        return True, response.json()
-        
-    except requests.exceptions.RequestException as e:
-        error_data = {
-            "error": str(e),
-            "status_code": getattr(e.response, 'status_code', None) if hasattr(e, 'response') else None,
-            "response_body": getattr(e.response, 'text', None) if hasattr(e, 'response') else None
-        }
-        return False, error_data
+    for attempt in range(max_retries + 1):
+        try:
+            response = requests.put(url, headers=get_headers(), json=request_body)
+            
+            # Handle different response codes
+            if response.status_code == 200:
+                # Success
+                time.sleep(delay)  # Rate limiting delay
+                try:
+                    return True, response.json()
+                except json.JSONDecodeError:
+                    return True, {"status": "success", "statusUrl": f"{API_BASE_URL}/wholesale/customers/{customer_id}"}
+            
+            elif response.status_code == 429:
+                # Rate limited - retry with exponential backoff
+                if attempt < max_retries:
+                    retry_delay = retry_delays[min(attempt, len(retry_delays) - 1)]
+                    print(f"    Rate limited (429), retrying in {retry_delay} seconds... (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    # Max retries exceeded
+                    error_data = {
+                        "error": f"429 Too Many Requests (max retries exceeded after {max_retries} attempts)",
+                        "status_code": 429,
+                        "response_body": response.text
+                    }
+                    return False, error_data
+            
+            else:
+                # Other HTTP errors (409, 400, etc.) - don't retry
+                try:
+                    response_json = response.json()
+                    error_message = response_json.get('message', f'HTTP {response.status_code} error')
+                except json.JSONDecodeError:
+                    error_message = f'HTTP {response.status_code} error'
+                
+                error_data = {
+                    "error": error_message,
+                    "status_code": response.status_code,
+                    "response_body": response.text
+                }
+                return False, error_data
+                
+        except requests.exceptions.RequestException as e:
+            # Network/connection errors - retry
+            if attempt < max_retries:
+                retry_delay = retry_delays[min(attempt, len(retry_delays) - 1)]
+                print(f"    Request failed, retrying in {retry_delay} seconds... (attempt {attempt + 1}/{max_retries})")
+                time.sleep(retry_delay)
+                continue
+            else:
+                error_data = {
+                    "error": f"Request failed: {str(e)}",
+                    "status_code": getattr(e.response, 'status_code', None) if hasattr(e, 'response') else None,
+                    "response_body": getattr(e.response, 'text', None) if hasattr(e, 'response') else None
+                }
+                return False, error_data
+    
+    # This should never be reached, but just in case
+    error_data = {
+        "error": "Unexpected error in retry logic",
+        "status_code": None,
+        "response_body": None
+    }
+    return False, error_data
 
 def process_customer_update(customer: Dict[str, str], args: argparse.Namespace) -> Dict[str, Any]:
     """
@@ -475,6 +527,26 @@ def generate_report(results: List[Dict[str, Any]], args: argparse.Namespace) -> 
     successful = sum(1 for r in results if r['success'])
     failed = total_customers - successful
     
+    # Calculate error type statistics
+    rate_limit_errors = 0
+    conflict_errors = 0
+    validation_errors = 0
+    other_errors = 0
+    
+    for result in results:
+        if not result['success'] and result.get('api_response'):
+            status_code = result['api_response'].get('status_code')
+            if status_code == 429:
+                rate_limit_errors += 1
+            elif status_code == 409:
+                conflict_errors += 1
+            elif status_code == 400:
+                validation_errors += 1
+            else:
+                other_errors += 1
+        elif not result['success']:
+            other_errors += 1
+    
     # Generate report content
     with open(filepath, 'w', encoding='utf-8') as f:
         f.write(f"Wholesale Customer External ID Update - {'Dry Run' if args.dry_run else 'Execution'} Report\n")
@@ -482,6 +554,8 @@ def generate_report(results: List[Dict[str, Any]], args: argparse.Namespace) -> 
         f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write(f"Input File: {args.input}\n")
         f.write(f"Mode: {'Dry Run (Preview Only)' if args.dry_run else 'Execute Updates'}\n")
+        f.write(f"Batch Size: {args.batch_size}\n")
+        f.write(f"Delay Between Requests: {args.delay} seconds\n")
         f.write("\n")
         
         # Filters applied
@@ -502,6 +576,11 @@ def generate_report(results: List[Dict[str, Any]], args: argparse.Namespace) -> 
         f.write(f"- Total customers processed: {total_customers}\n")
         f.write(f"- Successful updates: {successful}\n")
         f.write(f"- Failed updates: {failed}\n")
+        if failed > 0:
+            f.write(f"  - Rate limit errors (429): {rate_limit_errors}\n")
+            f.write(f"  - Conflict errors (409): {conflict_errors}\n")
+            f.write(f"  - Validation errors (400): {validation_errors}\n")
+            f.write(f"  - Other errors: {other_errors}\n")
         f.write("\n")
         
         # Detailed results
@@ -518,8 +597,10 @@ def generate_report(results: List[Dict[str, Any]], args: argparse.Namespace) -> 
                 f.write(f"   Error: {result['error']}\n")
             elif args.execute and result['api_response']:
                 f.write(f"   API Response: {result['api_response'].get('status', 'Success')}\n")
-                if 'url' in result['api_response']:
-                    f.write(f"   Status URL: {result['api_response']['url']}\n")
+                # Check for status URL in various possible keys
+                status_url = result['api_response'].get('statusUrl') or result['api_response'].get('url')
+                if status_url:
+                    f.write(f"   Status URL: {status_url}\n")
             
             f.write("\n")
         
